@@ -40,19 +40,33 @@ public class App implements RequestHandler<S3Event, String> {
 		// Format date as string
 		String dateString = currentDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
 
-		StringBuffer messageBody = new StringBuffer();
+		StringBuffer htmlBuilder = new StringBuffer();
 		try {
 			ScanFilter filter = new ScanFilter("date").eq(dateString);
 			ScanSpec spec = new ScanSpec().withScanFilters(filter);
 			// Get a reference to the table
 			Table table = dynamoDB.getTable(tableName);
 			ItemCollection<ScanOutcome> items = table.scan(spec);
-			for (Item item : items) {
-				messageBody.append(item.toJSONPretty());
-			}
+			// Construct the email body
+			htmlBuilder.append("Hi Prashanth").append(",\n\n");
+			htmlBuilder.append("Please find today's list of S3 uploads\n\n");
 
-			if (messageBody != null) {
-				sendEmailNotification(messageBody.toString());
+			htmlBuilder.append("<table border=\"1\">");
+			htmlBuilder.append(
+					"<tr><th>S3 URI</th><th>Object Name</th><th>Object Size</th><th>Object Type</th><th>Creation Date</th></tr>");
+
+			for (Item item : items) {
+				htmlBuilder.append("<tr>");
+				htmlBuilder.append("<td>").append(item.getString("uri")).append("</td>");
+				htmlBuilder.append("<td>").append(item.getString("key")).append("</td>");
+				htmlBuilder.append("<td>").append(item.getLong("objectSize")).append("</td>");
+				htmlBuilder.append("<td>").append(item.getString("objectType")).append("</td>");
+				htmlBuilder.append("<td>").append(item.getString("date")).append("</td>");
+				htmlBuilder.append("</tr>");
+			}
+			htmlBuilder.append("</table>");
+			if (htmlBuilder != null) {
+				sendEmailNotification(htmlBuilder.toString());
 			}
 		} catch (Exception e) {
 			System.out.println("Error while communicating with dynamo db.");
@@ -66,7 +80,7 @@ public class App implements RequestHandler<S3Event, String> {
 			SendEmailRequest request = new SendEmailRequest()
 					.withDestination(new Destination().withToAddresses("prashanthps7013@gmail.com"))
 					.withMessage(new Message()
-							.withBody(new Body().withText(new Content().withCharset("UTF-8").withData(messageBody)))
+							.withBody(new Body().withHtml(new Content().withCharset("UTF-8").withData(messageBody)))
 							.withSubject(new Content().withCharset("UTF-8").withData(EMAIL_SUBJECT)))
 					.withSource("admin@prashanthsagari.online");
 			sesClient.sendEmail(request);
