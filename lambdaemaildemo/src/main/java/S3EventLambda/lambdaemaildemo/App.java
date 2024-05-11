@@ -65,6 +65,8 @@ public class App implements RequestHandler<S3Event, String> {
 				htmlBuilder.append("</tr>");
 			}
 			htmlBuilder.append("</table>");
+			htmlBuilder.append("Regards AWS Scheduler.");
+
 			if (htmlBuilder != null) {
 				sendEmailNotification(htmlBuilder.toString());
 			}
